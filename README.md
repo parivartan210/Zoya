@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocol: ZOYA</title>
+<style>
+:root {
+--neon-blue: #00f3ff;
+--neon-pink: #ff0055;
+--bg-dark: #050510;
+--glass: rgba(255, 255, 255, 0.05);
+}
+body {
+margin: 0;
+overflow: hidden;
+background-color: var(--bg-dark);
+font-family: 'Courier New', Courier, monospace;
+color: var(--neon-blue);
+user-select: none;
+}
+#canvas-container {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+z-index: 1;
+}
+#ui-layer {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+z-index: 10;
+pointer-events: none;
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+padding: 20px;
+box-sizing: border-box;
+background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.6) 100%);
+}
+.hud-element {
+background: var(--glass);
+backdrop-filter: blur(4px);
+border: 1px solid rgba(255, 0, 85, 0.3);
+padding: 15px;
+border-radius: 4px;
+pointer-events: auto;
+box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);
+transition: all 0.3s ease;
+}
+.hud-element:hover {
+border-color: var(--neon-pink);
+box-shadow: 0 0 25px rgba(255, 0, 85, 0.3);
+}
+header {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+}
+h1 {
+margin: 0;
+font-size: 1.8rem;
+text-transform: uppercase;
+letter-spacing: 4px;
+color: var(--neon-pink);
+text-shadow: 0 0 10px var(--neon-pink);
+}
+.status-bar {
+font-size: 0.8rem;
+display: flex;
+gap: 15px;
+color: var(--neon-blue);
+}
+.status-item {
+display: flex;
+align-items: center;
+gap: 5px;
+}
+.indicator {
+width: 8px;
+height: 8px;
+background: var(--neon-pink);
+border-radius: 50%;
+box-shadow: 0 0 8px var(--neon-pink);
+animation: blink 1s infinite;
+}
+#controls-info {
+position: absolute;
+bottom: 20px;
+left: 20px;
+max-width: 300px;
+font-size: 0.75rem;
+line-height: 1.4;
+color: rgba(255, 255, 255, 0.7);
+}
+#action-btn {
+position: absolute;
+bottom: 20px;
+right: 20px;
+background: transparent;
+border: 1px solid var(--neon-pink);
+color: var(--neon-pink);
+padding: 15px 30px;
+font-size: 1rem;
+font-family: inherit;
+font-weight: bold;
+text-transform: uppercase;
+cursor: pointer;
+letter-spacing: 2px;
+transition: all 0.2s;
+pointer-events: auto;
+}
+#action-btn:hover {
+background: var(--neon-pink);
+color: #000;
+box-shadow: 0 0 20px var(--neon-pink);
+}
+#loader {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: #000;
+z-index: 100;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+transition: opacity 0.5s ease;
+}
+.spinner {
+width: 50px;
+height: 50px;
+border: 2px solid transparent;
+border-top: 2px solid var(--neon-pink);
+border-right: 2px solid var(--neon-blue);
+border-radius: 50%;
+animation: spin 1s linear infinite;
+margin-bottom: 15px;
+}
+.loader-text {
+font-size: 0.9rem;
+letter-spacing: 3px;
+animation: pulse 1.5s infinite;
+color: var(--neon-pink);
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+.scanlines {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+background-size: 100% 4px;
+z-index: 5;
+pointer-events: none;
+opacity: 0.3;
+}
+#code-display {
+position: absolute;
+top: 15%;
+left: 50%;
+transform: translateX(-50%);
+font-family: 'Courier New', monospace;
+font-size: 1.2rem;
+color: var(--neon-pink);
+text-shadow: 0 0 10px var(--neon-pink);
+opacity: 0.9;
+text-align: center;
+width: 80%;
+pointer-events: none;
+}
+#main-message {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+font-family: 'Courier New', monospace;
+font-size: 4rem;
+color: #fff;
+text-shadow: 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
+opacity: 0;
+text-align: center;
+pointer-events: none;
+z-index: 20;
+transition: opacity 2s ease;
+white-space: nowrap;
+}
+@media (max-width: 600px) {
+h1 { font-size: 1.2rem; }
+.status-bar { font-size: 0.6rem; flex-direction: column; gap: 5px; }
+#controls-info { font-size: 0.65rem; max-width: 200px; }
+.hud-element { padding: 10px; }
+#main-message { font-size: 2rem; }
+}
+</style>
+<script type="importmap">
+{
+"imports": {
+"three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+"three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}
+}
+</script>
+</head>
+<body>
+<div id="loader">
+<div class="spinner"></div>
+<div class="loader-text">INITIALIZING PROTOCOL: ZOYA...</div>
+</div>
+<div class="scanlines"></div>
+<div id="ui-layer">
+<header>
+<div class="hud-element">
+<h1>PROJECT: ZOYA</h1>
+<div style="font-size: 0.7rem; opacity: 0.7; color: #fff;">// HEARTBEAT_SYSTEM ONLINE</div>
+</div>
+<div class="hud-element status-bar">
+<div class="status-item"><div class="indicator"></div> LINKED</div>
+<div class="status-item">SYNC: <span id="sync-counter">100%</span></div>
+<div class="status-item">PULSE: <span id="bpm-counter">72 BPM</span></div>
+</div>
+</header>
+<div id="code-display">
+> AWAITING_AUTHORIZATION_<br>
+> TARGET_IDENTIFIED: ZOYA_<br>
+> I LOVE YOU ZOYA_<br>
+</div>
+<div id="main-message">WILL YOU MARRY ME?</div>
+<div id="controls-info" class="hud-element">
+<strong>CONTROLS:</strong><br>
+• Mouse Drag: Rotate View<br>
+• Scroll: Zoom In/Out<br>
+• Click: Interact<br>
+</div>
+<button id="action-btn">INITIATE_PROPOSAL</button>
+</div>
+<div id="canvas-container"></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const config = {
+particleCount: 1500,
+gridSize: 50,
+colorPrimary: 0xff0055, // Pink
+colorSecondary: 0x00f3ff // Cyan
+};
+
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050510, 0.015);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 25);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ReinhardToneMapping;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxDistance = 50;
+controls.minDistance = 5;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.0;
+
+const ambientLight = new THREE.AmbientLight(0x404040, 2);
+scene.add(ambientLight);
+
+const pointLight1 = new THREE.PointLight(config.colorPrimary, 3, 50);
+pointLight1.position.set(10, 10, 10);
+scene.add(pointLight1);
+
+const pointLight2 = new THREE.PointLight(config.colorSecondary, 2, 50);
+pointLight2.position.set(-10, -5, -10);
+scene.add(pointLight2);
+
+// Create Heart Shape
+const x = 0, y = 0;
+const heartShape = new THREE.Shape();
+heartShape.moveTo( x + 5, y + 5 );
+heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
+heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
+heartShape.bezierCurveTo( x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19 );
+heartShape.bezierCurveTo( x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7 );
+heartShape.bezierCurveTo( x + 16, y + 7, x + 16, y, x + 10, y );
+heartShape.bezierCurveTo( x + 7, y, x + 5, y + 5, x + 5, y + 5 );
+
+const extrudeSettings = { depth: 2, bevelEnabled: true, bevelSegments: 3, steps: 2, bevelSize: 0.5, bevelThickness: 0.5 };
+const heartGeo = new THREE.ExtrudeGeometry( heartShape, extrudeSettings );
+
+// Center the heart
+heartGeo.computeBoundingBox();
+const centerOffset = -0.5 * ( heartGeo.boundingBox.max.x - heartGeo.boundingBox.min.x );
+const centerYOffset = -0.5 * ( heartGeo.boundingBox.max.y - heartGeo.boundingBox.min.y );
+heartGeo.translate( centerOffset, centerYOffset, -1 );
+
+// Invert heart
+heartGeo.rotateZ(Math.PI);
+
+const heartMat = new THREE.MeshPhysicalMaterial({
+color: 0x220011,
+metalness: 0.8,
+roughness: 0.2,
+clearcoat: 1.0,
+emissive: config.colorPrimary,
+emissiveIntensity: 0.4,
+});
+
+const heart = new THREE.Mesh(heartGeo, heartMat);
+heart.scale.set(0.3, 0.3, 0.3);
+scene.add(heart);
+
+// Wireframe aura
+const wireMat = new THREE.MeshBasicMaterial({
+color: config.colorPrimary,
+wireframe: true,
+transparent: true,
+opacity: 0.3
+});
+const wireHeart = new THREE.Mesh(heartGeo, wireMat);
+wireHeart.scale.set(0.33, 0.33, 0.33);
+scene.add(wireHeart);
+
+
+const gridHelper = new THREE.GridHelper(config.gridSize, config.gridSize, config.colorSecondary, 0x222222);
+gridHelper.position.y = -8;
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = 0.4;
+scene.add(gridHelper);
+
+// Floating Data Nodes
+const nodeGeo = new THREE.IcosahedronGeometry(0.2, 0);
+const nodeMat = new THREE.MeshStandardMaterial({
+color: config.colorSecondary,
+emissive: config.colorSecondary,
+emissiveIntensity: 1.0,
+});
+
+const nodeCount = 100;
+const dummy = new THREE.Object3D();
+const nodes = new THREE.InstancedMesh(nodeGeo, nodeMat, nodeCount);
+scene.add(nodes);
+
+const nodePositions = [];
+for (let i = 0; i < nodeCount; i++) {
+const r = 8 + Math.random() * 12;
+const theta = Math.random() * Math.PI * 2;
+const phi = Math.random() * Math.PI;
+
+const nx = r * Math.sin(phi) * Math.cos(theta);
+const ny = r * Math.sin(phi) * Math.sin(theta);
+const nz = r * Math.cos(phi);
+
+nodePositions.push({ x: nx, y: ny, z: nz, speed: 0.2 + Math.random() * 0.8, offset: Math.random() * 100 });
+}
+
+// Particle System
+const particlesGeo = new THREE.BufferGeometry();
+const particlesPos = new Float32Array(config.particleCount * 3);
+
+for (let i = 0; i < config.particleCount * 3; i+=3) {
+particlesPos[i] = (Math.random() - 0.5) * 80;
+particlesPos[i+1] = (Math.random() - 0.5) * 80;
+particlesPos[i+2] = (Math.random() - 0.5) * 80;
+}
+
+particlesGeo.setAttribute('position', new THREE.BufferAttribute(particlesPos, 3));
+const particlesMat = new THREE.PointsMaterial({
+color: 0xffaacc,
+size: 0.1,
+transparent: true,
+opacity: 0.6,
+blending: THREE.AdditiveBlending
+});
+const particleSystem = new THREE.Points(particlesGeo, particlesMat);
+scene.add(particleSystem);
+
+// Post-processing
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.4, 0.85);
+bloomPass.threshold = 0.1;
+bloomPass.strength = 1.5;
+bloomPass.radius = 0.5;
+composer.addPass(bloomPass);
+
+function onResize() {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+composer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+
+// UI Logic
+const btn = document.getElementById('action-btn');
+const loader = document.getElementById('loader');
+const codeDisplay = document.getElementById('code-display');
+const mainMsg = document.getElementById('main-message');
+const bpmCounter = document.getElementById('bpm-counter');
+
+let proposalActive = false;
+
+btn.addEventListener('click', () => {
+if(proposalActive) return;
+proposalActive = true;
+
+btn.textContent = "PROPOSAL_INITIATED";
+btn.style.background = "var(--neon-blue)";
+btn.style.color = "#000";
+btn.style.borderColor = "var(--neon-blue)";
+
+codeDisplay.innerHTML = "> EXECUTING_PROTOCOL...<br>> OVERRIDING_SYSTEMS...<br>> I LOVE YOU ZOYA";
+codeDisplay.style.color = "var(--neon-blue)";
+
+bloomPass.strength = 4.0;
+controls.autoRotateSpeed = 10.0;
+
+// Accelerate heart
+heartBeatSpeed = 15;
+
+setTimeout(() => {
+    bloomPass.strength = 2.0;
+    controls.autoRotateSpeed = 2.0;
+    mainMsg.style.opacity = 1;
+    heartMat.emissiveIntensity = 1.5;
+    bpmCounter.innerText = "140 BPM";
+}, 3000);
+});
+
+let time = 0;
+let lastTime = performance.now();
+let heartBeatSpeed = 3;
+
+function animate(currentTime) {
+requestAnimationFrame(animate);
+
+const delta = (currentTime - lastTime) / 1000;
+lastTime = currentTime;
+time += delta;
+
+// Beating Heart
+const beat = 1 + Math.pow(Math.sin(time * heartBeatSpeed), 4) * 0.15;
+heart.scale.set(0.3 * beat, 0.3 * beat, 0.3 * beat);
+wireHeart.scale.set(0.33 * beat, 0.33 * beat, 0.33 * beat);
+
+// Rotate Heart
+heart.rotation.y = Math.sin(time * 0.5) * 0.5;
+wireHeart.rotation.y = heart.rotation.y;
+
+
+for (let i = 0; i < nodeCount; i++) {
+const n = nodePositions[i];
+const t = time * n.speed + n.offset;
+const nx = n.x * Math.cos(t * 0.5) - n.z * Math.sin(t * 0.5);
+const nz = n.x * Math.sin(t * 0.5) + n.z * Math.cos(t * 0.5);
+const ny = n.y + Math.sin(t) * 1.5;
+
+dummy.position.set(nx, ny, nz);
+dummy.rotation.x = t;
+dummy.rotation.y = t;
+const s = 1 + Math.sin(t * 3) * 0.3;
+dummy.scale.set(s, s, s);
+dummy.updateMatrix();
+nodes.setMatrixAt(i, dummy.matrix);
+}
+nodes.instanceMatrix.needsUpdate = true;
+
+const positions = particleSystem.geometry.attributes.position.array;
+for (let i = 1; i < config.particleCount * 3; i+=3) {
+positions[i] -= 0.05;
+if (positions[i] < -40) {
+positions[i] = 40;
+}
+}
+particleSystem.geometry.attributes.position.needsUpdate = true;
+
+pointLight1.position.x = Math.sin(time) * 15;
+pointLight1.position.z = Math.cos(time) * 15;
+pointLight2.position.x = Math.cos(time * 0.7) * 15;
+pointLight2.position.z = Math.sin(time * 0.7) * 15;
+
+controls.update();
+composer.render();
+}
+
+window.onload = () => {
+setTimeout(() => {
+loader.style.opacity = 0;
+setTimeout(() => {
+loader.style.display = 'none';
+}, 500);
+}, 2000);
+};
+
+animate(0);
+</script>
+</body>
+</html>
